@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Play, AlertTriangle, CheckCircle, Clock, XCircle, RefreshCw, Users } from 'lucide-react';
+import { Search, Play, AlertTriangle, CheckCircle, Clock, XCircle, RefreshCw, Users, Download, FileSpreadsheet, FileText, Car } from 'lucide-react';
 import type { AdminScrape } from '../types';
 import { getAdminScrapes, triggerAdminScrape, searchUsers } from '../services/api';
 
@@ -12,6 +12,7 @@ export default function Admin() {
   const [triggering, setTriggering] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [downloadingFormat, setDownloadingFormat] = useState<string | null>(null);
 
   useEffect(() => {
     loadScrapes();
@@ -80,6 +81,62 @@ export default function Admin() {
     });
   }
 
+  // Mock inventory download function
+  async function handleDownloadInventory(format: 'csv' | 'xlsx' | 'json') {
+    setDownloadingFormat(format);
+    
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Generate mock inventory data
+    const mockInventory = [
+      { vin: '1HGBH41JXMN109186', year: 2024, make: 'Honda', model: 'Accord', trim: 'EX-L', condition: 'New', price: 32500, mileage: 15, daysOnLot: 12 },
+      { vin: '2T1BURHE5JC123456', year: 2023, make: 'Toyota', model: 'Camry', trim: 'SE', condition: 'Used', price: 24900, mileage: 18500, daysOnLot: 28 },
+      { vin: '1FA6P8TH5L5123456', year: 2024, make: 'Ford', model: 'Mustang', trim: 'GT', condition: 'New', price: 45000, mileage: 8, daysOnLot: 5 },
+      { vin: '5YJSA1E26MF123456', year: 2023, make: 'Tesla', model: 'Model 3', trim: 'Long Range', condition: 'CPO', price: 38500, mileage: 12000, daysOnLot: 15 },
+      { vin: 'WVWZZZ3CZWE123456', year: 2024, make: 'Volkswagen', model: 'ID.4', trim: 'Pro S', condition: 'New', price: 52000, mileage: 22, daysOnLot: 8 },
+      { vin: '1G1YY22G965123456', year: 2022, make: 'Chevrolet', model: 'Corvette', trim: 'Stingray', condition: 'Used', price: 68000, mileage: 8500, daysOnLot: 45 },
+      { vin: 'JN1TANT31U0123456', year: 2024, make: 'Nissan', model: 'Altima', trim: 'SV', condition: 'New', price: 28500, mileage: 12, daysOnLot: 18 },
+      { vin: '3MW5R1J05M8123456', year: 2023, make: 'BMW', model: '330i', trim: 'xDrive', condition: 'CPO', price: 42000, mileage: 15000, daysOnLot: 22 },
+    ];
+
+    let content: string;
+    let mimeType: string;
+    let filename: string;
+
+    if (format === 'csv') {
+      const headers = Object.keys(mockInventory[0]).join(',');
+      const rows = mockInventory.map(item => Object.values(item).join(','));
+      content = [headers, ...rows].join('\n');
+      mimeType = 'text/csv';
+      filename = `inventory_export_${new Date().toISOString().split('T')[0]}.csv`;
+    } else if (format === 'json') {
+      content = JSON.stringify(mockInventory, null, 2);
+      mimeType = 'application/json';
+      filename = `inventory_export_${new Date().toISOString().split('T')[0]}.json`;
+    } else {
+      // For xlsx, we'll create a CSV as a fallback (real implementation would use a library)
+      const headers = Object.keys(mockInventory[0]).join(',');
+      const rows = mockInventory.map(item => Object.values(item).join(','));
+      content = [headers, ...rows].join('\n');
+      mimeType = 'text/csv';
+      filename = `inventory_export_${new Date().toISOString().split('T')[0]}.csv`;
+    }
+
+    // Create and trigger download
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    setDownloadingFormat(null);
+  }
+
   function getStatusBadge(status: string) {
     const baseClasses = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium';
     switch (status) {
@@ -134,8 +191,111 @@ export default function Admin() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Admin Panel</h1>
         <p className="mt-1 text-gray-500">
-          Manage manual scrapes and system operations
+          Manage manual scrapes, downloads, and system operations
         </p>
+      </div>
+
+      {/* Inventory Download Section */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="flex items-center mb-6">
+          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+            <Car className="w-5 h-5 text-blue-600" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Download Your Inventory</h2>
+            <p className="text-sm text-gray-500">Export your dealership's inventory data for external use</p>
+          </div>
+        </div>
+
+        <div className="bg-gray-50 rounded-lg p-4 mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-sm font-medium text-gray-700">Current Inventory</p>
+              <p className="text-xs text-gray-500">Last updated: {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-bold text-blue-600">155</p>
+              <p className="text-xs text-gray-500">Total Vehicles</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div className="bg-white rounded-lg p-2">
+              <p className="text-lg font-semibold text-green-600">45</p>
+              <p className="text-xs text-gray-500">New</p>
+            </div>
+            <div className="bg-white rounded-lg p-2">
+              <p className="text-lg font-semibold text-blue-600">85</p>
+              <p className="text-xs text-gray-500">Used</p>
+            </div>
+            <div className="bg-white rounded-lg p-2">
+              <p className="text-lg font-semibold text-purple-600">25</p>
+              <p className="text-xs text-gray-500">CPO</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <p className="text-sm font-medium text-gray-700">Choose export format:</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <button
+              onClick={() => handleDownloadInventory('csv')}
+              disabled={downloadingFormat !== null}
+              className="flex items-center justify-center px-4 py-3 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {downloadingFormat === 'csv' ? (
+                <RefreshCw className="w-5 h-5 text-green-600 mr-2 animate-spin" />
+              ) : (
+                <FileSpreadsheet className="w-5 h-5 text-green-600 mr-2" />
+              )}
+              <div className="text-left">
+                <p className="text-sm font-medium text-green-700">CSV Format</p>
+                <p className="text-xs text-green-600">Best for Excel</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => handleDownloadInventory('xlsx')}
+              disabled={downloadingFormat !== null}
+              className="flex items-center justify-center px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {downloadingFormat === 'xlsx' ? (
+                <RefreshCw className="w-5 h-5 text-blue-600 mr-2 animate-spin" />
+              ) : (
+                <FileSpreadsheet className="w-5 h-5 text-blue-600 mr-2" />
+              )}
+              <div className="text-left">
+                <p className="text-sm font-medium text-blue-700">Excel Format</p>
+                <p className="text-xs text-blue-600">Native .xlsx</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => handleDownloadInventory('json')}
+              disabled={downloadingFormat !== null}
+              className="flex items-center justify-center px-4 py-3 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {downloadingFormat === 'json' ? (
+                <RefreshCw className="w-5 h-5 text-purple-600 mr-2 animate-spin" />
+              ) : (
+                <FileText className="w-5 h-5 text-purple-600 mr-2" />
+              )}
+              <div className="text-left">
+                <p className="text-sm font-medium text-purple-700">JSON Format</p>
+                <p className="text-xs text-purple-600">For integrations</p>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-start">
+            <Download className="w-4 h-4 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-blue-700">
+              <strong>Tip:</strong> Use CSV or Excel format for spreadsheet applications. JSON format is ideal for API integrations, 
+              third-party tools, or custom data processing workflows.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Manual Scrape Trigger */}
